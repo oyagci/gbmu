@@ -42,3 +42,4 @@ src/ui/ui_*.h
 gbmu-dbg
 .dbg_*.gb
 .dbg_*.ppm
+.DS_Store
