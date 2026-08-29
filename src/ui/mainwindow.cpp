@@ -5,6 +5,7 @@
 #include "worker.h"
 
 #include <QBoxLayout>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QGraphicsPixmapItem>
@@ -57,11 +58,16 @@ GbType MainWindow::get_gb_type() {
 }
 
 void MainWindow::on_actionOpen_triggered() {
-  _rom_path = QFileDialog::getOpenFileName(
-      this, tr("Open ROM"),
-      "/Users/oyagci/Workspace/42/gbmu/tools/blargg-test-roms",
-      tr("*.gb *.gbc"));
-  if (_rom_path.isEmpty()) return;
+  // Offer the directory the last ROM came from, and the home directory on the
+  // first run. Assign _rom_path only once the dialog succeeds: it is also the
+  // base for the battery save and the snapshot paths, so cancelling the dialog
+  // must leave the running game's paths alone.
+  const QString start_dir =
+      _rom_path.isEmpty() ? QDir::homePath() : QFileInfo(_rom_path).path();
+  const QString path = QFileDialog::getOpenFileName(this, tr("Open ROM"),
+                                                    start_dir, tr("*.gb *.gbc"));
+  if (path.isEmpty()) return;
+  _rom_path = path;
   if (g_gameboy && _gameboy_thread && _gameboy_worker 
 	  && _timer_screen &&
       _gameboy_screen) 
