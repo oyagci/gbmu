@@ -32,7 +32,6 @@ public:
   Byte read(Word addr) const { return get_bios()[addr]; }
   void write(Word, Byte) {}
 
-  auto get_begin() const { get_bios().cbegin(); }
   void set_type(GbType type) { _type = type; }
 };
 #endif /* BIOS_H */

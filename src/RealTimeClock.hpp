@@ -1,6 +1,8 @@
 #ifndef REALTIMECLOCK_H
 #define REALTIMECLOCK_H
 
+#include <boost/serialization/access.hpp>
+
 #include <chrono>
 #include <cstdint>
 #include <ctime>
@@ -181,7 +183,7 @@ private:
   ** THIS FUNCTION SHOULD ONLY BE CALLED ONCE A SECOND
   */
   void tick() {
-    if ((day_high & 0x40) == 1) // Is HALT flag set?
+    if ((day_high & 0x40) != 0) // Is HALT flag set?
       return;
 
     if (seconds < 59) {

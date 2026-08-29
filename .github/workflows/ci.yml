@@ -1,0 +1,22 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang make libboost-all-dev portaudio19-dev libgtest-dev
+      # Builds everything, then runs the tests that still compile.
+      # Excluded (stale, they predate API changes in src/): Core, Gameboy,
+      # MemoryBankController1/2/3, Timer, Sound, RealTimeClock. Core and Timer
+      # also need a ROM at tools/Tetris.gb, which is not in the repo.
+      - name: Build and test
+        shell: bash
+        run: |
+          make -f RawProject.mk test_sample test_Operations_utils test_Interrupt | tee out
+          ! grep -q KO out

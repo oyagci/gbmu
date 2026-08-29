@@ -1,6 +1,6 @@
 TEST_CC			:= clang++
-TEST_CFLAGS		:=
-TEST_LFLAGS		:= -lgtest -pthread -lportaudio -lportaudiocpp
+TEST_CFLAGS		:= -Wno-missing-field-initializers -Wno-reorder-init-list
+TEST_LFLAGS		:= -lgtest -pthread -lportaudio -lportaudiocpp -lboost_serialization
 ifeq ($(shell uname -s), Darwin)
 	TEST_CFLAGS		+= -I ~/.brew/include
 	TEST_LFLAGS		+= -L ~/.brew/lib
