@@ -83,6 +83,7 @@ public:
   bool get_pause() const { return _pause.load(); }
   void set_pause(bool val) { _pause.store(val); }
   void mute_gameboy() { _audio_interface.toggle_mute(); }
+  void set_free_running(bool v) { _audio_interface.set_free_running(v); }
 
   class BadChecksum : public std::exception {
     const char *what() const noexcept { return "Invalid ROM checksum."; }

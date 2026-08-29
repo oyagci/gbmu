@@ -7,6 +7,7 @@
 #include "src/IReadWrite.hpp"
 
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include <boost/archive/text_iarchive.hpp>
@@ -55,6 +56,9 @@ public:
   }
 
   Byte _sb = 0;
+  // Link-port output, mirrored into a bounded buffer so headless drivers can
+  // read what a test ROM printed. ponytail: 4K cap, grow it if a ROM says more.
+  std::string serial_log;
   template <typename T> void write(Word addr, T v) {
     auto i = sizeof(T);
     if (addr == 0xff01) {
@@ -62,6 +66,8 @@ public:
     }
     if (addr == 0xff02 && v == 0x81) {
       std::cerr << _sb;
+      if (serial_log.size() < 4096)
+        serial_log += static_cast<char>(_sb);
     }
 
     if (addr == 0xFF50) {
