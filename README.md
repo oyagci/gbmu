@@ -28,16 +28,16 @@ Every result below is reproducible with the headless driver; see
 | Test suite | Result |
 | --- | --- |
 | [Blargg `cpu_instrs`](https://github.com/retrio/gb-test-roms) (11 ROMs) | **11 / 11 pass** |
-| [dmg-acid2](https://github.com/mattcurrie/dmg-acid2) | 96.45% of pixels match the reference [^1] |
-| [cgb-acid2](https://github.com/mattcurrie/cgb-acid2) | 95.43% of pixels match the reference |
+| [dmg-acid2](https://github.com/mattcurrie/dmg-acid2) | **every pixel matches** the reference [^1] |
+| [cgb-acid2](https://github.com/mattcurrie/cgb-acid2) | 99.38% of pixels match the reference |
 
-Both acid2 renders are otherwise pixel-exact; every difference falls inside the
-two areas listed under [Known issues](#known-issues).
+The one region where the CGB render still differs is the nose, listed under
+[Known issues](#known-issues).
 
 [^1]: Compared after mapping the four grey shades onto each other. gbmu renders
 DMG with `$00 $77 $CC $FF`, while dmg-acid2 asks emulators to use
 `$00 $55 $AA $FF` so that images can be diffed byte for byte; against the
-reference bytes as-is the figure is 68.77%. The CGB row needs no such
+reference bytes as-is the figure is 72.04%. The CGB row needs no such
 adjustment: those colours are byte-exact.
 
 ## Features
@@ -45,7 +45,8 @@ adjustment: those colours are byte-exact.
 * **CPU** — the full SM83 instruction set, including `CB` prefixed opcodes,
   interrupts, `HALT`, and `STOP`.
 * **PPU** — scanline renderer with background, window, and sprites; the 10
-  sprites-per-line limit; sprite/background priority; 8x8 and 8x16 sprites.
+  sprites-per-line limit; sprite/background priority; 8x8 and 8x16 sprites; the
+  window's own line counter, so hiding the window mid-frame keeps its row.
 * **Colour** — CGB background and object palettes, VRAM banking, and both
   general-purpose and H-Blank HDMA transfers.
 * **Audio** — all four channels (two square, wave, noise) with sweep, envelope,
@@ -150,13 +151,9 @@ magick out.ppm -filter point -resize 300% out.png
 
 ## Known issues
 
-* **Window internal line counter.** The window's line counter is not preserved
-  correctly across the frame, so the right side of the chin in both acid2 tests
-  renders from the wrong tile map row. This is the single largest source of
-  pixel differences in both tests.
 * **Sprite tile flipping in CGB mode.** The acid2 nose, four objects sharing one
   tile flipped on both axes, is missing in CGB mode but renders correctly in DMG
-  mode.
+  mode. This is the only part of cgb-acid2 that still differs.
 * **Save states** exist in the code but are disabled in the UI.
 * Several unit tests under `tests/` predate later API changes in `src/` and no
   longer compile; CI runs the ones that still build.
