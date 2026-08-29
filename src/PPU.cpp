@@ -90,6 +90,7 @@ void PPU::reset() {
   _sprite_size = 0;
   _unsigned_tile_numbers = false;
   _windowing_on = false;
+  _window_line_counter = 0;
   _nb_sprites = 0;
 
   _h_blank_hdma_src_addr = 0;
@@ -120,6 +121,7 @@ void PPU::unset_bit(uint8_t &src, uint8_t bit_number) {
 void PPU::handle_lcdc_write(uint8_t value) {
   if (test_bit(_lcdc, 7) == true && test_bit(value, 7) == false) {
     _ly = 0;
+    _window_line_counter = 0;
     for (int y = 0; y < LCD_HEIGHT; y++) {
       for (int x = 0; x < LCD_WIDTH; x++) {
         set_pixel(y, x, 0xFFFFFFFF);
@@ -658,7 +660,7 @@ void PPU::render_tiles() {
 
     if (in_window == true) {
       x_pos = (i + 7) - _wx;
-      y_pos = _ly - _wy;
+      y_pos = _window_line_counter;
     } else {
       x_pos = _scx + i;
       y_pos = _scy + _ly;
@@ -710,6 +712,11 @@ void PPU::render_tiles() {
     _pixel_pipeline[i].sprite_info.tile_number = tile_number;
     _pixel_pipeline[i].sprite_info.flags = tile_attr;
   }
+
+  // in_window is never cleared inside the loop, so by here it says whether the
+  // window was drawn anywhere on this line. Only then does its counter move.
+  if (in_window == true)
+    _window_line_counter++;
 }
 
 //------------------------------------------------------------------------------
@@ -806,6 +813,7 @@ void PPU::update_v_blank_status() {
     _lcd_cycles -= CYCLES_VBLANK * _speed;
     if (_ly >= 153) {
       _ly = 0;
+      _window_line_counter = 0;
       set_stat_mode(MODE_OAM_SEARCH);
       if (test_bit(_stat, 5) == true)
         _components.interrupt_controller->request_interrupt( // valid

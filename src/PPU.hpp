@@ -207,6 +207,12 @@ private:
   uint8_t _sprite_size;
   bool _unsigned_tile_numbers;
   bool _windowing_on;
+  // The window keeps its own line counter. It advances only on scanlines where
+  // the window is actually drawn, so hiding the window part way down a frame,
+  // by moving WX off screen or by clearing LCDC bit 5, freezes it instead of
+  // resynchronising it to LY. Deriving the row from LY - WY gets every frame
+  // that hides and then shows the window again wrong.
+  uint8_t _window_line_counter;
   uint8_t _gb_mode;
 
   uint16_t _h_blank_hdma_src_addr;
@@ -269,6 +275,7 @@ private:
     ar &_sprite_size;
     ar &_unsigned_tile_numbers;
     ar &_windowing_on;
+    ar &_window_line_counter;
     ar &_gb_mode;
 
     ar &_h_blank_hdma_src_addr;
