@@ -518,9 +518,17 @@ void PPU::blend_pixels(t_pixel_segment &holder, t_pixel_segment &contender) {
   {
     if (holder.is_sprite == false) // holder is a tile
     {
+      // LCDC bit 0 is the background-to-object master priority in CGB. Reset,
+      // the background and the window lose priority for this line and every
+      // opaque object pixel covers them, whatever the background attribute or
+      // the object's own priority bit ask for.
+      if (test_bit(_lcdc, 0) == false) {
+        if (contender.value > 0)
+          replace_pixel_segment(holder, contender);
+      }
       // tiles also have priority flag in CGB
-      if (test_bit(holder.sprite_info.flags, 7) ==
-          false) // priority according to sprite flag
+      else if (test_bit(holder.sprite_info.flags, 7) ==
+               false) // priority according to sprite flag
       {
         if (test_bit(contender.sprite_info.flags, 7) ==
                 false               // contender sprite has priority to BG
