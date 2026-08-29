@@ -80,7 +80,15 @@ test_dbg: $(DBG_NAME)
 	check "trace"          ".dbg_pass.gb -n 1 -t"    2 "^0000  31 FE FF  LD SP d16$$"; \
 	check "memory dump"    ".dbg_pass.gb -b 150 -d 0161" 0 "^0161  50 61 73 73 65 64"; \
 	check "bad rom"        "/dev/null"               1 ""; \
-	$(RM) .dbg_pass.gb .dbg_fail.gb; \
+	check "frame limit"    ".dbg_pass.gb --frames 3"  2 "frame limit"; \
+	check "screenshot"     ".dbg_pass.gb --frames 3 -s .dbg_shot.ppm" 2 "frame limit"; \
+	sz=$$(wc -c < .dbg_shot.ppm | tr -d ' '); \
+	if [ "$$sz" = "69135" ]; then \
+		$(ECHO) "["$(GREEN)OK$(RESET)"] - screenshot is a 160x144 ppm"; \
+	else \
+		$(ECHO) "["$(RED)KO$(RESET)"] - screenshot is a 160x144 ppm ($$sz bytes)"; fail=1; \
+	fi; \
+	$(RM) .dbg_pass.gb .dbg_fail.gb .dbg_shot.ppm; \
 	exit $$fail
 #
 

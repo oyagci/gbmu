@@ -35,6 +35,8 @@ struct Options {
   std::set<Word> breakpoints;
   unsigned long max_steps = 0; // 0 = unlimited
   bool trace = false;
+  unsigned long max_frames = 0; // 0 = unlimited
+  std::string screenshot;       // "-" streams every frame to stdout
   bool has_dump = false;
   Word dump_addr = 0;
   GbType type = GbType::DEFAULT;
@@ -46,11 +48,14 @@ void usage(const char *argv0) {
                "  -b, --break ADDR   break at ADDR (hex), repeatable\n"
                "  -n, --steps N      stop after N instructions\n"
                "  -t, --trace        disassemble every instruction\n"
+               "  -f, --frames N     stop after N rendered frames\n"
+               "  -s, --screenshot F write the last frame to F as a PPM;\n"
+               "                     \"-\" streams every frame to stdout\n"
                "  -d, --dump ADDR    dump 160 bytes at ADDR when stopped\n"
                "      --dmg          force DMG (default: auto-detect)\n"
                "      --cgb          force CGB\n"
                "\n"
-               "exit: 0 stopped/passed, 1 failed, 2 step limit, 3 usage\n"
+               "exit: 0 stopped/passed, 1 failed, 2 step/frame limit, 3 usage\n"
                "serial output goes to stderr as the ROM writes it\n",
                argv0);
 }
@@ -86,6 +91,16 @@ bool parse(int ac, char **av, Options &o, bool &ok) {
         return false;
       o.dump_addr = std::strtoul(v, nullptr, 16);
       o.has_dump = true;
+    } else if (a == "-f" || a == "--frames") {
+      const char *v = next("count");
+      if (!v)
+        return false;
+      o.max_frames = std::strtoul(v, nullptr, 0);
+    } else if (a == "-s" || a == "--screenshot") {
+      const char *v = next("path");
+      if (!v)
+        return false;
+      o.screenshot = v;
     } else if (a == "-t" || a == "--trace") {
       o.trace = true;
     } else if (a == "--dmg") {
@@ -109,37 +124,52 @@ bool parse(int ac, char **av, Options &o, bool &ok) {
   return true;
 }
 
-void print_trace(Debugger &dbg) {
+void print_trace(Debugger &dbg, std::FILE *out) {
   dbg.reset();
   const auto &pool = dbg.get_instruction_pool();
   if (pool.empty())
     return;
   const auto &in = pool.front();
-  std::printf("%04X  ", in.pc);
+  std::fprintf(out, "%04X  ", in.pc);
   for (int i = 0; i < 3; i++) {
     if (i < in.size)
-      std::printf("%02X ", in.value[i] & 0xFF);
+      std::fprintf(out, "%02X ", in.value[i] & 0xFF);
     else
-      std::printf("   ");
+      std::fprintf(out, "   ");
   }
-  std::printf(" %s\n", in.instr ? in.instr : "??");
+  std::fprintf(out, " %s\n", in.instr ? in.instr : "??");
 }
 
-void print_state(const Gameboy &gb) {
+void print_state(const Gameboy &gb, std::FILE *out) {
   const auto &c = *gb.components().core;
-  std::printf("PC:%04X SP:%04X AF:%04X BC:%04X DE:%04X HL:%04X  LY:%02X\n",
-              c.pc(), c.sp(), c.af().word, c.bc().word, c.de().word,
-              c.hl().word, gb.components().mem_bus->read<Byte>(0xFF44));
+  std::fprintf(out,
+               "PC:%04X SP:%04X AF:%04X BC:%04X DE:%04X HL:%04X  LY:%02X\n",
+               c.pc(), c.sp(), c.af().word, c.bc().word, c.de().word,
+               c.hl().word, gb.components().mem_bus->read<Byte>(0xFF44));
 }
 
-void print_dump(Debugger &dbg, Word addr) {
+void print_dump(Debugger &dbg, Word addr, std::FILE *out) {
   const auto bytes = dbg.get_memory_dump(addr);
   for (std::size_t i = 0; i < bytes.size(); i++) {
     if (i % 16 == 0)
-      std::printf("%s%04X ", i ? "\n" : "", static_cast<unsigned>(addr + i));
-    std::printf(" %02X", bytes[i]);
+      std::fprintf(out, "%s%04X ", i ? "\n" : "",
+                   static_cast<unsigned>(addr + i));
+    std::fprintf(out, " %02X", bytes[i]);
   }
-  std::printf("\n");
+  std::fprintf(out, "\n");
+}
+
+// One frame as a binary PPM (P6). Uncompressed and dependency-free on
+// purpose: the repo's screenshots come from piping these through ffmpeg.
+void write_ppm(const Gameboy &gb, std::FILE *out) {
+  const ScreenOutput &screen = *gb.components().driver_screen;
+  std::fprintf(out, "P6\n%d %d\n255\n", LCD_WIDTH, LCD_HEIGHT);
+  for (uint8_t y = 0; y < LCD_HEIGHT; y++)
+    for (uint8_t x = 0; x < LCD_WIDTH; x++) {
+      const unsigned char rgb[3] = {screen.get_r(y, x), screen.get_g(y, x),
+                                    screen.get_b(y, x)};
+      std::fwrite(rgb, 1, sizeof(rgb), out);
+    }
 }
 
 // Blargg test ROMs print their verdict over the link port.
@@ -174,6 +204,11 @@ int main(int ac, char **av) {
   }
   Gameboy &gb = *owner;
 
+  // Streaming frames owns stdout, so the human-readable half moves to stderr
+  // rather than interleaving binary PPM with text and corrupting the pipe.
+  const bool streaming = o.screenshot == "-";
+  std::FILE *msg = streaming ? stderr : stdout;
+
   Debugger &dbg = gb.get_debugger();
   dbg.set_instruction_pool_size(0); // one instruction per trace line
   auto &bus = *gb.components().mem_bus;
@@ -181,9 +216,13 @@ int main(int ac, char **av) {
   const char *reason = "step limit";
   int rc = 2;
   std::size_t seen_serial = 0;
+  unsigned long frames = 0;
+  // is_screen_filled() is a level (LY == 144), true for every step of that
+  // whole line, so a frame is the false->true edge, not the state.
+  bool was_filled = false;
   for (unsigned long n = 0; !o.max_steps || n < o.max_steps; n++) {
     if (o.trace)
-      print_trace(dbg);
+      print_trace(dbg, msg);
     if (!o.breakpoints.empty() &&
         o.breakpoints.count(gb.components().core->pc())) {
       reason = "breakpoint";
@@ -191,6 +230,18 @@ int main(int ac, char **av) {
       break;
     }
     gb.step();
+    const bool filled = gb.is_screen_filled();
+    if (filled && !was_filled) {
+      frames++;
+      if (streaming)
+        write_ppm(gb, stdout);
+      if (o.max_frames && frames >= o.max_frames) {
+        reason = "frame limit";
+        rc = 2;
+        break;
+      }
+    }
+    was_filled = filled;
     if (bus.serial_log.size() != seen_serial) {
       seen_serial = bus.serial_log.size();
       int verdict = serial_verdict(bus.serial_log);
@@ -202,9 +253,19 @@ int main(int ac, char **av) {
     }
   }
 
-  std::printf("\nstopped: %s\n", reason);
-  print_state(gb);
+  if (!o.screenshot.empty() && !streaming) {
+    std::FILE *f = std::fopen(o.screenshot.c_str(), "wb");
+    if (!f) {
+      std::fprintf(stderr, "%s: cannot write\n", o.screenshot.c_str());
+      return 1;
+    }
+    write_ppm(gb, f);
+    std::fclose(f);
+  }
+
+  std::fprintf(msg, "\nstopped: %s\n", reason);
+  print_state(gb, msg);
   if (o.has_dump)
-    print_dump(dbg, o.dump_addr);
+    print_dump(dbg, o.dump_addr, msg);
   return rc;
 }
