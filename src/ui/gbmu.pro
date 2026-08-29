@@ -27,7 +27,7 @@ CONFIG += c++14
 QMAKE_CXXFLAGS += -Wall -Wextra -Werror -std=c++14
 LIBS += -lboost_serialization
 
-OBJECTS_DIR = ./src/obj
+OBJECTS_DIR = ./src/qt-obj
 UI_DIR = ./src/ui
 MOC_DIR = ./src/moc
 RCC_DIR = ./src/rcc
