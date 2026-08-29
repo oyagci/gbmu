@@ -27,6 +27,11 @@ void Cartridge::load_rom(const std::string &path) {
 
   std::streamsize size = file.tellg();
 
+  // Smallest legal cartridge is 32K; anything shorter makes the header reads
+  // below (and MemoryBus') run off the end of the vector.
+  if (size < 0x8000)
+    throw std::invalid_argument("ROM file is too small to be a cartridge");
+
   file.seekg(0, std::ios::beg);
   rom.resize(size);
   file.read((char *)(rom.data()), size);

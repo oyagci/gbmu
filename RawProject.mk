@@ -2,8 +2,9 @@
 #
 .SUFFIXES:
 CC 		:= clang++
-CFLAGS		:= -I.  -I ~/.brew/include -Wall -Wextra -Werror -g -std='c++14'
-LFLAGS		:= -L ~/.brew/lib -lportaudiocpp -lportaudio
+BREW		:= $(shell brew --prefix 2>/dev/null || echo $(HOME)/.brew)
+CFLAGS		:= -I. -I $(BREW)/include -Wall -Wextra -Werror -g -std='c++14'
+LFLAGS		:= -L $(BREW)/lib -lportaudiocpp -lportaudio
 RM		:= rm -f
 OBJECT_DIR	:= obj
 COMP		:= $(CC) $(CFLAGS) -c -o
@@ -47,6 +48,42 @@ include $(patsubst %, %/Rules.mk, $(SRC_DIRS))
 %/$(OBJECT_DIR):
 	mkdir $@
 
+## Headless ROM debugger (no Qt)
+#
+DBG_NAME	:= gbmu-dbg
+
+.PHONY: dbg
+dbg: $(DBG_NAME)
+
+$(DBG_NAME): all src/$(OBJECT_DIR)/main.o
+	$(CC) $(CFLAGS) -o $@ src/$(OBJECT_DIR)/main.o \
+		$(filter-out src/$(OBJECT_DIR)/main.o, $(OBJECTS)) \
+		$(LFLAGS) -lboost_serialization
+
+# Smoke test: drives gbmu-dbg over a generated ROM and checks every exit code.
+.PHONY: test_dbg
+test_dbg: $(DBG_NAME)
+	@python3 tools/gen_test_rom.py .dbg_pass.gb Passed
+	@python3 tools/gen_test_rom.py .dbg_fail.gb Failed
+	@fail=0; \
+	check() { \
+		out=$$(./$(DBG_NAME) $$2 2>/dev/null); rc=$$?; \
+		if [ "$$rc" = "$$3" ] && echo "$$out" | grep -q "$$4"; then \
+			$(ECHO) "["$(GREEN)OK$(RESET)"] - $$1"; \
+		else \
+			$(ECHO) "["$(RED)KO$(RESET)"] - $$1 (rc=$$rc)"; echo "$$out"; fail=1; \
+		fi; }; \
+	check "serial passed"  ".dbg_pass.gb -n 5000000" 0 "serial: passed"; \
+	check "serial failed"  ".dbg_fail.gb -n 5000000" 1 "serial: failed"; \
+	check "step limit"     ".dbg_pass.gb -n 10"      2 "step limit"; \
+	check "breakpoint"     ".dbg_pass.gb -b 150"     0 "breakpoint"; \
+	check "trace"          ".dbg_pass.gb -n 1 -t"    2 "^0000  31 FE FF  LD SP d16$$"; \
+	check "memory dump"    ".dbg_pass.gb -b 150 -d 0161" 0 "^0161  50 61 73 73 65 64"; \
+	check "bad rom"        "/dev/null"               1 ""; \
+	$(RM) .dbg_pass.gb .dbg_fail.gb; \
+	exit $$fail
+#
+
 ## Including tests
 #
 -include $(patsubst %, %/Rules.mk, $(TEST_DIRS))
@@ -59,7 +96,7 @@ clean:
 
 .PHONY: fclean
 fclean: clean
-	@$(RM) $(TEST_TARGETS)
+	@$(RM) $(TEST_TARGETS) $(DBG_NAME)
 	@$(ECHO) $(NAME) "deleted"
 
 .PHONY: re

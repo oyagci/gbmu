@@ -65,6 +65,8 @@ PortAudioInterface::~PortAudioInterface() {
 
 bool PortAudioInterface::queue_stereo_samples(const MonoSamples& right,
                                               const MonoSamples& left) {
+  if (free_running()) return true;  // drop the samples, never block
+
   if (_stream == nullptr) {
     // Since gameboy is synchronized on the sound device sample retrieving, if
     // no sound device is available, we kinda do as if there is one by waiting
