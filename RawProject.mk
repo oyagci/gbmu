@@ -8,11 +8,7 @@ LFLAGS		:= -L $(BREW)/lib -lportaudiocpp -lportaudio
 RM		:= rm -f
 OBJECT_DIR	:= obj
 COMP		:= $(CC) $(CFLAGS) -c -o
-ifeq ($(shell uname -s), Darwin)
 ECHO		:= echo
-else
-ECHO		:= echo -e
-endif
 #
 
 ## Sources directories
@@ -23,10 +19,14 @@ SRC_DIRS	:= src src/cpu utils src/sound src/sound/portaudio
 
 ## Colors
 #
-BLUE		:= "\033[34m"
-GREEN		:= "\033[32m"
-RED		:= "\033[31m"
-RESET		:= "\033[0m"
+# Hold a real ESC byte rather than the "\033" spelling: recipes run under
+# /bin/sh, and whether its echo expands escapes (and accepts -e) varies by
+# platform. A literal byte needs neither.
+ESC		:= $(shell printf '\033')
+BLUE		:= "$(ESC)[34m"
+GREEN		:= "$(ESC)[32m"
+RED		:= "$(ESC)[31m"
+RESET		:= "$(ESC)[0m"
 PNAME		:= $(BLUE)$(NAME)$(RESET)
 #
 
