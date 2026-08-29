@@ -91,6 +91,17 @@ The binary is `/gbmu/gbmu` in the image. Tests:
 docker run --rm gbmu make -f RawProject.mk test_sample test_Operations_utils test_Interrupt
 ```
 
+## Debugger
+
+The Qt front-end carries a debugger window: the CPU registers, a running
+disassembly, a memory view, the video and timer registers, and lists of
+breakpoints and watchpoints. You can step a single instruction, run exactly one
+frame, or run for a fixed number of CPU seconds.
+
+<p align="center">
+  <img src="docs/debugger.png" width="820" alt="The gbmu debugger window">
+</p>
+
 ## Headless debugger
 
 `gbmu-dbg` links the emulator without Qt, for scripting and CI.
