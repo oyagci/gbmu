@@ -109,13 +109,18 @@ uint32_t PPU::translate_cgb_color_value(uint16_t value) {
   uint32_t ret = 0;
   uint32_t extracc;
 
-  extracc = extract_value(value, 0, 4) << 3; // * 8; // extract red
+  // 5-bit CGB component -> 8-bit: replicate the top 3 bits into the low ones
+  // so full intensity reaches 0xFF rather than 0xF8. A bare `<< 3` leaves
+  // every colour slightly dark and never renders true white.
+  auto to_8bit = [](uint32_t c) { return (c << 3) | (c >> 2); };
+
+  extracc = to_8bit(extract_value(value, 0, 4)); // extract red
   ret += extracc;
   ret = ret << 8;
-  extracc = extract_value(value, 5, 9) << 3; // * 8; // extract green
+  extracc = to_8bit(extract_value(value, 5, 9)); // extract green
   ret += extracc;
   ret = ret << 8;
-  extracc = extract_value(value, 10, 14) << 3; // * 8; // extact blue
+  extracc = to_8bit(extract_value(value, 10, 14)); // extract blue
   ret += extracc;
   ret = ret << 8;
   ret += 255; // alpha value, default 255;
