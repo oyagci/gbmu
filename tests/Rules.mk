@@ -58,7 +58,7 @@ $(CURR_DIR)/%: $(CURR_DIR)/$(OBJECT_DIR)/%.o $(NAME)
 	$(TEST_CC) -o $@ $< $(subst src/obj/main.o,,$(OBJECTS)) $(TEST_LFLAGS)
 
 $(CURR_DIR)/$(OBJECT_DIR)/%.o: $(CURR_DIR)/%.cpp
-	$(TEST_CC) $(CFLAGS) $(TEST_CFLAGS) -c -o $@ $<
+	$(TEST_CC) $(CFLAGS) $(TEST_CFLAGS) -MMD -MP -c -o $@ $<
 
 $(TEST_OBJ_DIR):
 	mkdir $@

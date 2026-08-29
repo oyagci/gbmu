@@ -7,7 +7,7 @@ CFLAGS		:= -I. -I $(BREW)/include -Wall -Wextra -Werror -g -std='c++14'
 LFLAGS		:= -L $(BREW)/lib -lportaudiocpp -lportaudio
 RM		:= rm -f
 OBJECT_DIR	:= obj
-COMP		:= $(CC) $(CFLAGS) -c -o
+COMP		:= $(CC) $(CFLAGS) -MMD -MP -c -o
 ECHO		:= echo
 #
 
@@ -95,6 +95,14 @@ test_dbg: $(DBG_NAME)
 ## Including tests
 #
 -include $(patsubst %, %/Rules.mk, $(TEST_DIRS))
+#
+
+## Header dependencies, written by the compiler as it builds each object.
+# Keeping this list by hand went wrong silently: three objects had no entry at
+# all, so editing a header they include left them stale and the mismatched
+# layouts only showed up as corrupted output at runtime.
+#
+-include $(OBJECTS:.o=.d) $(TEST_OBJECTS:.o=.d)
 #
 
 .PHONY: clean
