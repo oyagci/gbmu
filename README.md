@@ -14,7 +14,7 @@ It is possible that some games do not work properly.
 * clang++
 
 # OSX
-```brew install boost portaudio```
+```brew install qt@5 boost portaudio```
 
 # Fedora
 ```# dnf install portaudio-devel boost-devel clang qt5 qt5-qtbase-devel```
@@ -24,3 +24,13 @@ It is possible that some games do not work properly.
 
 # Build
 ```./configure && make -j```
+
+# Docker
+Builds on Linux without installing anything locally.
+```
+docker build -t gbmu .
+```
+The binary is `/gbmu/gbmu` in the image. Tests:
+```
+docker run --rm gbmu make -f RawProject.mk test_sample test_Operations_utils test_Interrupt
+```

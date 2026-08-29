@@ -32,3 +32,10 @@
 *.app
 compile_commands.json
 *.autosave
+
+# qmake build artifacts
+Makefile
+.qmake.stash
+src/moc/
+src/rcc/
+src/ui/ui_*.h

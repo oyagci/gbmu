@@ -45,10 +45,11 @@ HEADERS += \
     debuggerwindow.h \
 	worker.h
 
-HOME = $$(HOME)
+BREW = $$system(brew --prefix 2>/dev/null)
+isEmpty(BREW): BREW = $$(HOME)/.brew
 
-INCLUDEPATH += $$HOME/.brew/include
-LIBS += -L $$HOME/.brew/lib -lportaudiocpp -lportaudio
+INCLUDEPATH += $$BREW/include
+LIBS += -L $$BREW/lib -lportaudiocpp -lportaudio
 
 FORMS += \
         mainwindow.ui \

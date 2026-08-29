@@ -1,11 +1,13 @@
 #!/bin/sh
 
-NAME=$(whoami)
 PROJECT_PATH=$(pwd)
 UNAME=$(uname -s)
 
-if [ "$UNAME" == "Darwin" ]; then
-	qmake $PROJECT_PATH/src/ui/gbmu.pro -spec macx-clang CONFIG+=release CONFIG+=x86_64
+if [ "$UNAME" = "Darwin" ]; then
+	QMAKE="$(brew --prefix qt@5 2>/dev/null)/bin/qmake"
+	[ -x "$QMAKE" ] || QMAKE=qmake
+	"$QMAKE" "$PROJECT_PATH/src/ui/gbmu.pro" -spec macx-clang CONFIG+=release
 else
-	qmake-qt5 $PROJECT_PATH/src/ui/gbmu.pro CONFIG+=release CONFIG+=x86_64
+	command -v qmake-qt5 >/dev/null && QMAKE=qmake-qt5 || QMAKE=qmake
+	"$QMAKE" "$PROJECT_PATH/src/ui/gbmu.pro" -spec linux-clang CONFIG+=release
 fi
